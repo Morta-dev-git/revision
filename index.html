@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de bord – Révisions (4 niveaux + reset par matière)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: #eef2f7;
+            padding: 30px 20px;
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0b2b40, #123e52);
+            color: white;
+            padding: 28px 32px;
+            border-radius: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.85;
+            font-size: 1rem;
+        }
+
+        .stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 30px;
+            padding: 16px 28px;
+            flex: 1;
+            min-width: 150px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .stat-card span {
+            display: block;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1e6f5c;
+        }
+
+        .subjects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .subject-card {
+            background: white;
+            border-radius: 32px;
+            padding: 22px 20px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .subject-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .subject-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .subject-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .reset-subject-btn {
+            background: #e2e8f0;
+            border: none;
+            border-radius: 40px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #b53b3b;
+            font-weight: bold;
+        }
+
+        .reset-subject-btn:hover {
+            background: #b53b3b;
+            color: white;
+        }
+
+        .progress-container {
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-bg {
+            background: #e2e8f0;
+            border-radius: 60px;
+            height: 12px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar-fill {
+            background: #1e6f5c;
+            width: 0%;
+            height: 100%;
+            border-radius: 60px;
+            transition: width 0.3s;
+        }
+
+        .progress-percent {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #1e6f5c;
+            margin-bottom: 15px;
+        }
+
+        .levels-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .level-btn {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 60px;
+            padding: 10px 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #1e2a3a;
+        }
+
+        .level-btn.active-25 { background: #fbbf24; color: #1e2a3a; }
+        .level-btn.active-50 { background: #f59e0b; color: white; }
+        .level-btn.active-75 { background: #10b981; color: white; }
+        .level-btn.active-100 { background: #1e6f5c; color: white; }
+
+        .level-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .todo-section {
+            background: white;
+            border-radius: 32px;
+            padding: 24px 28px;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .todo-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+
+        .todo-input-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .todo-input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 60px;
+            border: 1px solid #ccd7e4;
+            font-size: 1rem;
+        }
+
+        .btn-add {
+            background: #0b2b40;
+            color: white;
+            border: none;
+            padding: 0 28px;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .todo-list {
+            list-style: none;
+        }
+
+        .todo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f4f9fe;
+            margin: 10px 0;
+            padding: 12px 20px;
+            border-radius: 60px;
+        }
+
+        .todo-text {
+            font-size: 1rem;
+        }
+
+        .todo-actions button {
+            background: none;
+            border: none;
+            font-size: 0.9rem;
+            margin-left: 12px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 40px;
+        }
+
+        .todo-toggle {
+            background: #1e6f5c;
+            color: white;
+        }
+
+        .todo-delete {
+            background: #b53b3b;
+            color: white;
+        }
+
+        .btn-reset {
+            background: #b53b3b;
+            color: white;
+            border: none;
+            margin-top: 25px;
+            padding: 12px 22px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 35px;
+            color: #4f6f8a;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <h1>📘 Tableau de révision – Physique & Chimie</h1>
+        <p>Optique ondulatoire | Chimie quantique | Chimie de l'état solide | Physique atomique | Mécanique quantique | Thermodynamique</p>
+    </div>
+
+    <div class="stats-row" id="statsContainer"></div>
+
+    <div class="subjects-grid" id="subjectsGrid"></div>
+
+    <div class="todo-section">
+        <div class="todo-title">📋 Missions de révision (quotidiennes)</div>
+        <div class="todo-input-group">
+            <input type="text" id="taskInput" class="todo-input" placeholder="ex: Réviser les interférences en optique">
+            <button id="addTaskBtn" class="btn-add">➕ Ajouter</button>
+        </div>
+        <ul class="todo-list" id="todoList"></ul>
+        <button id="resetAllBtn" class="btn-reset">⚠️ Réinitialiser tout le tableau (toutes les matières)</button>
+    </div>
+    <footer>✔️ Clique sur un niveau (25% / 50% / 75% / 100%) | 🔄 Réinitialiser une matière individuellement</footer>
+</div>
+
+<script>
+    // Liste des matières
+    const subjectsList = [
+        "🔆 Optique ondulatoire",
+        "⚛️ Chimie quantique",
+        "🧪 Chimie de l'état solide",
+        "🌀 Physique atomique et moléculaire",
+        "🌌 Mécanique quantique",
+        "🔥 Thermodynamique"
+    ];
+
+    // Niveaux disponibles
+    const levels = [25, 50, 75, 100];
+    
+    // Charger ou initialiser les progrès (0 = 0% par défaut)
+    let progress = {};
+    const savedProgress = localStorage.getItem("subjectsProgress4levels");
+    if (savedProgress) {
+        try {
+            const parsed = JSON.parse(savedProgress);
+            subjectsList.forEach(sub => {
+                progress[sub] = parsed[sub] !== undefined ? parsed[sub] : 0;
+            });
+        } catch(e) {
+            initProgress();
+        }
+    } else {
+        initProgress();
+    }
+    
+    function initProgress() {
+        subjectsList.forEach(sub => {
+            progress[sub] = 0;
+        });
+    }
+    
+    // Tâches quotidiennes
+    let tasks = JSON.parse(localStorage.getItem("revisionTasksSimple")) || [];
+    
+    function saveProgress() {
+        localStorage.setItem("subjectsProgress4levels", JSON.stringify(progress));
+    }
+    
+    function saveTasks() {
+        localStorage.setItem("revisionTasksSimple", JSON.stringify(tasks));
+    }
+    
+    // إعادة تعيين مادة واحدة فقط
+    function resetSingleSubject(subject) {
+        if (confirm(`Voulez-vous remettre "${subject}" à 0% ?`)) {
+            progress[subject] = 0;
+            saveProgress();
+            renderSubjects();
+            updateStats();
+        }
+    }
+    
+    // Calcul des statistiques globales
+    function getGlobalStats() {
+        let totalPercent = 0;
+        subjectsList.forEach(sub => {
+            totalPercent += progress[sub];
+        });
+        const avgPercent = subjectsList.length === 0 ? 0 : Math.round(totalPercent / subjectsList.length);
+        const completedCount = subjectsList.filter(sub => progress[sub] === 100).length;
+        return { avgPercent, completedCount, totalPercent };
+    }
+    
+    function updateStats() {
+        const stats = getGlobalStats();
+        const tasksDone = tasks.filter(t => t.done).length;
+        const statsHtml = `
+            <div class="stat-card">📊 Progression moyenne <span>${stats.avgPercent}%</span></div>
+            <div class="stat-card">🏆 Matières à 100% <span>${stats.completedCount}/${subjectsList.length}</span></div>
+            <div class="stat-card">✅ Tâches faites <span>${tasksDone}/${tasks.length}</span></div>
+        `;
+        document.getElementById("statsContainer").innerHTML = statsHtml;
+    }
+    
+    // Générer les cartes des matières
+    function renderSubjects() {
+        const grid = document.getElementById("subjectsGrid");
+        grid.innerHTML = "";
+        
+        subjectsList.forEach(subject => {
+            const currentProgress = progress[subject];
+            const card = document.createElement("div");
+            card.className = "subject-card";
+            
+            // Générer les boutons de niveaux
+            let levelsHtml = "";
+            levels.forEach(level => {
+                let activeClass = "";
+                if (currentProgress === level) {
+                    if (level === 25) activeClass = "active-25";
+                    else if (level === 50) activeClass = "active-50";
+                    else if (level === 75) activeClass = "active-75";
+                    else if (level === 100) activeClass = "active-100";
+                }
+                levelsHtml += `<button class="level-btn ${activeClass}" data-subject="${subject}" data-level="${level}">${level}%</button>`;
+            });
+            
+            card.innerHTML = `
+                <div class="subject-header">
+                    <span class="subject-title">${subject}</span>
+                    <button class="reset-subject-btn" data-subject-reset="${subject}">🔄 Remettre à 0</button>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-percent">${currentProgress}%</div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${currentProgress}%;"></div>
+                    </div>
+                </div>
+                <div class="levels-buttons">
+                    ${levelsHtml}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+        
+        // événements pour les boutons de niveau
+        document.querySelectorAll(".level-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const subject = btn.getAttribute("data-subject");
+                const level = parseInt(btn.getAttribute("data-level"));
+                if (subject && !isNaN(level)) {
+                    progress[subject] = level;
+                    saveProgress();
+                    renderSubjects();
+                    updateStats();
+                }
+            });
+        });
+        
+        // événements pour les boutons "reset par matière"
+        document.querySelectorAll(".reset-subject-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const subject = btn.getAttribute("data-subject-reset");
+                if (subject) {
+                    resetSingleSubject(subject);
+                }
+            });
+        });
+    }
+    
+    // Gestion des tâches
+    function renderTodoList() {
+        const todoContainer = document.getElementById("todoList");
+        if (!todoContainer) return;
+        
+        if (tasks.length === 0) {
+            todoContainer.innerHTML = "<li style='padding:12px; text-align:center; color:#6c8a9e;'>✨ Aucune tâche. Ajoute une révision quotidienne</li>";
+            return;
+        }
+        
+        let html = "";
+        tasks.forEach((task, idx) => {
+            const styleDone = task.done ? "style='text-decoration:line-through; opacity:0.6;'" : "";
+            html += `
+                <li class="todo-item" ${styleDone}>
+                    <span class="todo-text">${escapeHtml(task.text)}</span>
+                    <div class="todo-actions">
+                        <button class="todo-toggle" data-idx="${idx}">${task.done ? "↩️ Défaire" : "✅ Fait"}</button>
+                        <button class="todo-delete" data-idx="${idx}">🗑️</button>
+                    </div>
+                </li>
+            `;
+        });
+        todoContainer.innerHTML = html;
+        
+        document.querySelectorAll(".todo-toggle").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (!isNaN(idx) && tasks[idx]) {
+                    tasks[idx].done = !tasks[idx].done;
+                    saveTasks();
+                    renderTodoList();
+                    updateStats();
+                }
+            });
+        });
+        
+        document.querySelectorAll(".todo-delete").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (!isNaN(idx) && tasks[idx]) {
+                    tasks.splice(idx, 1);
+                    saveTasks();
+                    renderTodoList();
+                    updateStats();
+                }
+            });
+        });
+    }
+    
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    function addTask() {
+        const input = document.getElementById("taskInput");
+        const text = input.value.trim();
+        if (text === "") return;
+        tasks.push({ text: text, done: false });
+        saveTasks();
+        renderTodoList();
+        updateStats();
+        input.value = "";
+    }
+    
+    function resetEverything() {
+        if (confirm("⚠️ Attention : cela remettra TOUTES les matières à 0% et supprimera toutes les tâches. Continuer ?")) {
+            subjectsList.forEach(sub => {
+                progress[sub] = 0;
+            });
+            saveProgress();
+            tasks = [];
+            saveTasks();
+            renderSubjects();
+            renderTodoList();
+            updateStats();
+        }
+    }
+    
+    // Initialisation
+    function init() {
+        renderSubjects();
+        updateStats();
+        renderTodoList();
+        
+        document.getElementById("addTaskBtn").addEventListener("click", addTask);
+        document.getElementById("resetAllBtn").addEventListener("click", resetEverything);
+        document.getElementById("taskInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") addTask();
+        });
+    }
+    
+    init();
+</script>
+</body>
+</html>
