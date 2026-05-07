@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de bord – Révisions (4 niveaux + reset par matière)</title>
+    <title>SmartBoard - Matières personnalisables</title>
     <style>
         * {
             margin: 0;
@@ -18,7 +18,7 @@
         }
 
         .dashboard {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: auto;
         }
 
@@ -40,6 +40,75 @@
         .header p {
             opacity: 0.85;
             font-size: 1rem;
+        }
+
+        .admin-bar {
+            background: white;
+            border-radius: 60px;
+            padding: 16px 24px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .add-subject-group {
+            display: flex;
+            gap: 10px;
+            flex: 2;
+            min-width: 250px;
+        }
+
+        .add-subject-group input {
+            flex: 1;
+            padding: 12px 18px;
+            border-radius: 60px;
+            border: 1px solid #ccd7e4;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: #1e6f5c;
+            color: white;
+            border: none;
+            border-radius: 60px;
+            padding: 12px 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #0b4f41;
+        }
+
+        .btn-danger {
+            background: #b53b3b;
+            color: white;
+            border: none;
+            border-radius: 60px;
+            padding: 12px 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #8b2e2e;
+        }
+
+        .btn-secondary {
+            background: #4a6a85;
+            color: white;
+            border: none;
+            border-radius: 60px;
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
         }
 
         .stats-row {
@@ -70,7 +139,7 @@
 
         .subjects-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 24px;
             margin-bottom: 40px;
         }
@@ -97,12 +166,49 @@
             gap: 10px;
         }
 
-        .subject-title {
-            font-size: 1.3rem;
-            font-weight: 700;
+        .subject-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
         }
 
-        .reset-subject-btn {
+        .subject-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: none;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #1e2a3a;
+        }
+
+        .subject-title:hover {
+            background: #e2e8f0;
+        }
+
+        .subject-title-input {
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: 20px;
+            border: 2px solid #1e6f5c;
+            background: white;
+            width: auto;
+        }
+
+        .edit-icon, .save-icon {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 30px;
+        }
+
+        .delete-subject-btn {
             background: #e2e8f0;
             border: none;
             border-radius: 40px;
@@ -114,7 +220,7 @@
             font-weight: bold;
         }
 
-        .reset-subject-btn:hover {
+        .delete-subject-btn:hover {
             background: #b53b3b;
             color: white;
         }
@@ -203,16 +309,6 @@
             font-size: 1rem;
         }
 
-        .btn-add {
-            background: #0b2b40;
-            color: white;
-            border: none;
-            padding: 0 28px;
-            border-radius: 60px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
         .todo-list {
             list-style: none;
         }
@@ -251,30 +347,32 @@
             color: white;
         }
 
-        .btn-reset {
-            background: #b53b3b;
-            color: white;
-            border: none;
-            margin-top: 25px;
-            padding: 12px 22px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
         footer {
             text-align: center;
             margin-top: 35px;
             color: #4f6f8a;
             font-size: 0.8rem;
         }
+
+        @media (max-width: 700px) {
+            .admin-bar { flex-direction: column; }
+            .add-subject-group { width: 100%; }
+        }
     </style>
 </head>
 <body>
 <div class="dashboard">
     <div class="header">
-        <h1>📘 Tableau de révision – Physique & Chimie</h1>
-        <p>Optique ondulatoire | Chimie quantique | Chimie de l'état solide | Physique atomique | Mécanique quantique | Thermodynamique</p>
+        <h1>📚 SmartBoard - Tableau de révision</h1>
+        <p>Ajoute, modifie ou supprime des matières librement | 4 niveaux de progression</p>
+    </div>
+
+    <div class="admin-bar">
+        <div class="add-subject-group">
+            <input type="text" id="newSubjectName" placeholder="Nouvelle matière (ex: Biologie, Algorithmique...)">
+            <button id="addSubjectBtn" class="btn-primary">➕ Ajouter une matière</button>
+        </div>
+        <button id="resetAllDataBtn" class="btn-danger">⚠️ Réinitialiser tout</button>
     </div>
 
     <div class="stats-row" id="statsContainer"></div>
@@ -285,17 +383,16 @@
         <div class="todo-title">📋 Missions de révision (quotidiennes)</div>
         <div class="todo-input-group">
             <input type="text" id="taskInput" class="todo-input" placeholder="ex: Réviser les interférences en optique">
-            <button id="addTaskBtn" class="btn-add">➕ Ajouter</button>
+            <button id="addTaskBtn" class="btn-primary">➕ Ajouter</button>
         </div>
         <ul class="todo-list" id="todoList"></ul>
-        <button id="resetAllBtn" class="btn-reset">⚠️ Réinitialiser tout le tableau (toutes les matières)</button>
     </div>
-    <footer>✔️ Clique sur un niveau (25% / 50% / 75% / 100%) | 🔄 Réinitialiser une matière individuellement</footer>
+    <footer>✏️ Clique sur le nom d'une matière pour la modifier | 🗑️ Supprimer une matière | ➕ Ajouter des matières</footer>
 </div>
 
 <script>
-    // Liste des matières
-    const subjectsList = [
+    // Charger ou initialiser les matières
+    let subjectsList = JSON.parse(localStorage.getItem("dynamicSubjectsList")) || [
         "🔆 Optique ondulatoire",
         "⚛️ Chimie quantique",
         "🧪 Chimie de l'état solide",
@@ -303,62 +400,45 @@
         "🌌 Mécanique quantique",
         "🔥 Thermodynamique"
     ];
-
+    
+    let progress = JSON.parse(localStorage.getItem("dynamicSubjectsProgress")) || {};
+    let tasks = JSON.parse(localStorage.getItem("dynamicRevisionTasks")) || [];
+    
     // Niveaux disponibles
     const levels = [25, 50, 75, 100];
     
-    // Charger ou initialiser les progrès (0 = 0% par défaut)
-    let progress = {};
-    const savedProgress = localStorage.getItem("subjectsProgress4levels");
-    if (savedProgress) {
-        try {
-            const parsed = JSON.parse(savedProgress);
-            subjectsList.forEach(sub => {
-                progress[sub] = parsed[sub] !== undefined ? parsed[sub] : 0;
-            });
-        } catch(e) {
-            initProgress();
-        }
-    } else {
-        initProgress();
+    // État d'édition (pour chaque matière)
+    let editingMode = {};
+    
+    function saveAll() {
+        localStorage.setItem("dynamicSubjectsList", JSON.stringify(subjectsList));
+        localStorage.setItem("dynamicSubjectsProgress", JSON.stringify(progress));
+        localStorage.setItem("dynamicRevisionTasks", JSON.stringify(tasks));
     }
     
-    function initProgress() {
+    // Initialiser les progrès pour les nouvelles matières
+    function syncProgress() {
         subjectsList.forEach(sub => {
-            progress[sub] = 0;
+            if (progress[sub] === undefined) {
+                progress[sub] = 0;
+            }
+        });
+        // Nettoyer les anciennes matières qui n'existent plus
+        Object.keys(progress).forEach(key => {
+            if (!subjectsList.includes(key)) {
+                delete progress[key];
+            }
         });
     }
     
-    // Tâches quotidiennes
-    let tasks = JSON.parse(localStorage.getItem("revisionTasksSimple")) || [];
-    
-    function saveProgress() {
-        localStorage.setItem("subjectsProgress4levels", JSON.stringify(progress));
-    }
-    
-    function saveTasks() {
-        localStorage.setItem("revisionTasksSimple", JSON.stringify(tasks));
-    }
-    
-    // إعادة تعيين مادة واحدة فقط
-    function resetSingleSubject(subject) {
-        if (confirm(`Voulez-vous remettre "${subject}" à 0% ?`)) {
-            progress[subject] = 0;
-            saveProgress();
-            renderSubjects();
-            updateStats();
-        }
-    }
-    
-    // Calcul des statistiques globales
     function getGlobalStats() {
         let totalPercent = 0;
         subjectsList.forEach(sub => {
-            totalPercent += progress[sub];
+            totalPercent += progress[sub] || 0;
         });
         const avgPercent = subjectsList.length === 0 ? 0 : Math.round(totalPercent / subjectsList.length);
-        const completedCount = subjectsList.filter(sub => progress[sub] === 100).length;
-        return { avgPercent, completedCount, totalPercent };
+        const completedCount = subjectsList.filter(sub => (progress[sub] || 0) === 100).length;
+        return { avgPercent, completedCount };
     }
     
     function updateStats() {
@@ -368,21 +448,99 @@
             <div class="stat-card">📊 Progression moyenne <span>${stats.avgPercent}%</span></div>
             <div class="stat-card">🏆 Matières à 100% <span>${stats.completedCount}/${subjectsList.length}</span></div>
             <div class="stat-card">✅ Tâches faites <span>${tasksDone}/${tasks.length}</span></div>
+            <div class="stat-card">📚 Total matières <span>${subjectsList.length}</span></div>
         `;
         document.getElementById("statsContainer").innerHTML = statsHtml;
     }
     
-    // Générer les cartes des matières
+    function resetSingleSubject(subject) {
+        if (confirm(`Voulez-vous remettre "${subject}" à 0% ?`)) {
+            progress[subject] = 0;
+            saveAll();
+            renderSubjects();
+            updateStats();
+        }
+    }
+    
+    function deleteSubject(subject) {
+        if (confirm(`Supprimer définitivement "${subject}" ? Toute progression sera perdue.`)) {
+            const index = subjectsList.indexOf(subject);
+            if (index !== -1) {
+                subjectsList.splice(index, 1);
+                delete progress[subject];
+                saveAll();
+                syncProgress();
+                renderSubjects();
+                updateStats();
+                renderTodoList();
+            }
+        }
+    }
+    
+    function updateSubjectName(oldName, newName) {
+        if (newName.trim() === "") return false;
+        if (newName === oldName) return false;
+        if (subjectsList.includes(newName)) {
+            alert("Ce nom existe déjà !");
+            return false;
+        }
+        const index = subjectsList.indexOf(oldName);
+        if (index !== -1) {
+            subjectsList[index] = newName;
+            progress[newName] = progress[oldName];
+            delete progress[oldName];
+            saveAll();
+            return true;
+        }
+        return false;
+    }
+    
+    function startEditing(subject, element) {
+        const currentName = subject;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = currentName;
+        input.className = "subject-title-input";
+        input.style.fontSize = "1.2rem";
+        input.style.fontWeight = "700";
+        
+        const doneEdit = () => {
+            const newName = input.value.trim();
+            if (newName !== "" && newName !== currentName) {
+                if (updateSubjectName(currentName, newName)) {
+                    renderSubjects();
+                } else if (newName !== currentName && newName !== "") {
+                    alert("Impossible de renommer (nom existant ou vide)");
+                    renderSubjects();
+                } else {
+                    renderSubjects();
+                }
+            } else {
+                renderSubjects();
+            }
+        };
+        
+        input.addEventListener("blur", doneEdit);
+        input.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                doneEdit();
+            }
+        });
+        
+        element.innerHTML = "";
+        element.appendChild(input);
+        input.focus();
+    }
+    
     function renderSubjects() {
         const grid = document.getElementById("subjectsGrid");
         grid.innerHTML = "";
         
         subjectsList.forEach(subject => {
-            const currentProgress = progress[subject];
+            const currentProgress = progress[subject] || 0;
             const card = document.createElement("div");
             card.className = "subject-card";
             
-            // Générer les boutons de niveaux
             let levelsHtml = "";
             levels.forEach(level => {
                 let activeClass = "";
@@ -397,8 +555,11 @@
             
             card.innerHTML = `
                 <div class="subject-header">
-                    <span class="subject-title">${subject}</span>
-                    <button class="reset-subject-btn" data-subject-reset="${subject}">🔄 Remettre à 0</button>
+                    <div class="subject-title-wrapper">
+                        <span class="subject-title" data-subject="${subject}">${escapeHtml(subject)}</span>
+                        <button class="edit-icon" data-subject="${subject}" title="Modifier le nom">✏️</button>
+                    </div>
+                    <button class="delete-subject-btn" data-subject-delete="${subject}">🗑️ Supprimer</button>
                 </div>
                 <div class="progress-container">
                     <div class="progress-percent">${currentProgress}%</div>
@@ -409,11 +570,14 @@
                 <div class="levels-buttons">
                     ${levelsHtml}
                 </div>
+                <div style="margin-top: 15px; text-align: left;">
+                    <button class="reset-subject-btn" data-subject-reset="${subject}" style="background:#e2e8f0; border:none; border-radius:40px; padding:6px 14px; cursor:pointer; color:#b53b3b;">🔄 Remettre à 0</button>
+                </div>
             `;
             grid.appendChild(card);
         });
         
-        // événements pour les boutons de niveau
+        // Niveaux de progression
         document.querySelectorAll(".level-btn").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 e.stopPropagation();
@@ -421,26 +585,50 @@
                 const level = parseInt(btn.getAttribute("data-level"));
                 if (subject && !isNaN(level)) {
                     progress[subject] = level;
-                    saveProgress();
+                    saveAll();
                     renderSubjects();
                     updateStats();
                 }
             });
         });
         
-        // événements pour les boutons "reset par matière"
+        // Reset individuel
         document.querySelectorAll(".reset-subject-btn").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 const subject = btn.getAttribute("data-subject-reset");
-                if (subject) {
-                    resetSingleSubject(subject);
-                }
+                if (subject) resetSingleSubject(subject);
+            });
+        });
+        
+        // Supprimer matière
+        document.querySelectorAll(".delete-subject-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const subject = btn.getAttribute("data-subject-delete");
+                if (subject) deleteSubject(subject);
+            });
+        });
+        
+        // Édition du nom (clique sur le titre ou le crayon)
+        document.querySelectorAll(".subject-title").forEach(el => {
+            el.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const subject = el.getAttribute("data-subject");
+                startEditing(subject, el);
+            });
+        });
+        
+        document.querySelectorAll(".edit-icon").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const subject = btn.getAttribute("data-subject");
+                const titleSpan = btn.parentElement.querySelector(".subject-title");
+                if (titleSpan) startEditing(subject, titleSpan);
             });
         });
     }
     
-    // Gestion des tâches
     function renderTodoList() {
         const todoContainer = document.getElementById("todoList");
         if (!todoContainer) return;
@@ -470,7 +658,7 @@
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 if (!isNaN(idx) && tasks[idx]) {
                     tasks[idx].done = !tasks[idx].done;
-                    saveTasks();
+                    saveAll();
                     renderTodoList();
                     updateStats();
                 }
@@ -482,7 +670,7 @@
                 const idx = parseInt(btn.getAttribute("data-idx"));
                 if (!isNaN(idx) && tasks[idx]) {
                     tasks.splice(idx, 1);
-                    saveTasks();
+                    saveAll();
                     renderTodoList();
                     updateStats();
                 }
@@ -504,36 +692,59 @@
         const text = input.value.trim();
         if (text === "") return;
         tasks.push({ text: text, done: false });
-        saveTasks();
+        saveAll();
         renderTodoList();
         updateStats();
         input.value = "";
     }
     
+    function addNewSubject() {
+        const input = document.getElementById("newSubjectName");
+        let newName = input.value.trim();
+        if (newName === "") {
+            alert("Veuillez entrer un nom de matière");
+            return;
+        }
+        if (subjectsList.includes(newName)) {
+            alert("Cette matière existe déjà !");
+            return;
+        }
+        subjectsList.push(newName);
+        progress[newName] = 0;
+        saveAll();
+        syncProgress();
+        renderSubjects();
+        updateStats();
+        input.value = "";
+    }
+    
     function resetEverything() {
-        if (confirm("⚠️ Attention : cela remettra TOUTES les matières à 0% et supprimera toutes les tâches. Continuer ?")) {
-            subjectsList.forEach(sub => {
-                progress[sub] = 0;
-            });
-            saveProgress();
+        if (confirm("⚠️ ATTENTION : Cela supprimera TOUTES les matières, TOUTE progression et TOUTES les tâches. Êtes-vous sûr ?")) {
+            subjectsList = [];
+            progress = {};
             tasks = [];
-            saveTasks();
+            saveAll();
+            syncProgress();
             renderSubjects();
             renderTodoList();
             updateStats();
         }
     }
     
-    // Initialisation
     function init() {
+        syncProgress();
         renderSubjects();
         updateStats();
         renderTodoList();
         
         document.getElementById("addTaskBtn").addEventListener("click", addTask);
-        document.getElementById("resetAllBtn").addEventListener("click", resetEverything);
         document.getElementById("taskInput").addEventListener("keypress", (e) => {
             if (e.key === "Enter") addTask();
+        });
+        document.getElementById("addSubjectBtn").addEventListener("click", addNewSubject);
+        document.getElementById("resetAllDataBtn").addEventListener("click", resetEverything);
+        document.getElementById("newSubjectName").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") addNewSubject();
         });
     }
     
