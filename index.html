@@ -3,682 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartBoard - Matières personnalisables</title>
+    <title>SmartBoard - Tableau de révision</title>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDeCUPhvgp5bhgr1OMdFLf_yGZ18XENFUc",
+            authDomain: "smartboard-revision.firebaseapp.com",
+            projectId: "smartboard-revision",
+            storageBucket: "smartboard-revision.firebasestorage.app",
+            messagingSenderId: "315684578839",
+            appId: "1:315684578839:web:1413f1527a252b0eb71e52",
+            measurementId: "G-2GW9ZKPKJG"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        const db = getFirestore(app);
+        
+        let currentUserData = null;
+        let currentUserUid = null;
+        
+        window.signInWithGoogle = async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (!userDoc.exists()) {
+                    await setDoc(userDocRef, {
+                        email: user.email,
+                        name: user.displayName || user.email,
+                        subjects: [],
+                        progress: {},
+                        resources: {},
+                        tasks: [],
+                        createdAt: new Date().toISOString()
+                    });
+                }
+            } catch (error) {
+                alert("Erreur: " + error.message);
+            }
+        };
+        
+        window.logoutUser = async () => {
+            await signOut(auth);
+        };
+        
+        window.getUserSubjects = () => currentUserData?.subjects || [];
+        window.setUserSubjects = (subjects) => {
+            if (currentUserData && currentUserUid) {
+                currentUserData.subjects = subjects;
+                updateDoc(doc(db, "users", currentUserUid), { subjects });
+            }
+        };
+        
+        window.getUserProgress = () => currentUserData?.progress || {};
+        window.setUserProgress = (progress) => {
+            if (currentUserData && currentUserUid) {
+                currentUserData.progress = progress;
+                updateDoc(doc(db, "users", currentUserUid), { progress });
+            }
+        };
+        
+        window.getUserResources = () => currentUserData?.resources || {};
+        window.setUserResources = (resources) => {
+            if (currentUserData && currentUserUid) {
+                currentUserData.resources = resources;
+                updateDoc(doc(db, "users", currentUserUid), { resources });
+            }
+        };
+        
+        window.getUserTasks = () => currentUserData?.tasks || [];
+        window.setUserTasks = (tasks) => {
+            if (currentUserData && currentUserUid) {
+                currentUserData.tasks = tasks;
+                updateDoc(doc(db, "users", currentUserUid), { tasks });
+            }
+        };
+        
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserUid = user.uid;
+                const userDocRef = doc(db, "users", user.uid);
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        currentUserData = docSnap.data();
+                        if (!currentUserData.resources) currentUserData.resources = {};
+                        document.getElementById("authPage").style.display = "none";
+                        document.getElementById("dashboard").style.display = "block";
+                        document.getElementById("currentUserName").textContent = currentUserData.name || user.email;
+                        document.getElementById("currentUserEmail").textContent = user.email;
+                        renderSubjects();
+                        updateStats();
+                        renderTodoList();
+                    }
+                });
+            } else {
+                currentUserData = null;
+                currentUserUid = null;
+                document.getElementById("authPage").style.display = "flex";
+                document.getElementById("dashboard").style.display = "none";
+            }
+        });
+        
+        window.renderSubjects = renderSubjects;
+        window.updateStats = updateStats;
+        window.renderTodoList = renderTodoList;
+    </script>
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-        }
-
-        body {
-            background: #eef2f7;
-            padding: 30px 20px;
-        }
-
-        .dashboard {
-            max-width: 1400px;
-            margin: auto;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #0b2b40, #123e52);
-            color: white;
-            padding: 28px 32px;
-            border-radius: 40px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            opacity: 0.85;
-            font-size: 1rem;
-        }
-
-        .admin-bar {
-            background: white;
-            border-radius: 60px;
-            padding: 16px 24px;
-            margin-bottom: 30px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-
-        .add-subject-group {
-            display: flex;
-            gap: 10px;
-            flex: 2;
-            min-width: 250px;
-        }
-
-        .add-subject-group input {
-            flex: 1;
-            padding: 12px 18px;
-            border-radius: 60px;
-            border: 1px solid #ccd7e4;
-            font-size: 1rem;
-        }
-
-        .btn-primary {
-            background: #1e6f5c;
-            color: white;
-            border: none;
-            border-radius: 60px;
-            padding: 12px 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-primary:hover {
-            background: #0b4f41;
-        }
-
-        .btn-danger {
-            background: #b53b3b;
-            color: white;
-            border: none;
-            border-radius: 60px;
-            padding: 12px 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-danger:hover {
-            background: #8b2e2e;
-        }
-
-        .btn-secondary {
-            background: #4a6a85;
-            color: white;
-            border: none;
-            border-radius: 60px;
-            padding: 8px 16px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .stats-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 35px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 30px;
-            padding: 16px 28px;
-            flex: 1;
-            min-width: 150px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            font-weight: bold;
-            font-size: 1.2rem;
-            text-align: center;
-        }
-
-        .stat-card span {
-            display: block;
-            font-size: 2rem;
-            font-weight: 800;
-            color: #1e6f5c;
-        }
-
-        .subjects-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
-        }
-
-        .subject-card {
-            background: white;
-            border-radius: 32px;
-            padding: 22px 20px;
-            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
-            position: relative;
-        }
-
-        .subject-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .subject-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .subject-title-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-        }
-
-        .subject-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            background: none;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: 0.2s;
-            color: #1e2a3a;
-        }
-
-        .subject-title:hover {
-            background: #e2e8f0;
-        }
-
-        .subject-title-input {
-            font-size: 1.2rem;
-            font-weight: 700;
-            padding: 5px 10px;
-            border-radius: 20px;
-            border: 2px solid #1e6f5c;
-            background: white;
-            width: auto;
-        }
-
-        .edit-icon, .save-icon {
-            background: none;
-            border: none;
-            font-size: 1rem;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 30px;
-        }
-
-        .delete-subject-btn {
-            background: #e2e8f0;
-            border: none;
-            border-radius: 40px;
-            padding: 6px 14px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: 0.2s;
-            color: #b53b3b;
-            font-weight: bold;
-        }
-
-        .delete-subject-btn:hover {
-            background: #b53b3b;
-            color: white;
-        }
-
-        .progress-container {
-            margin-bottom: 20px;
-        }
-
-        .progress-bar-bg {
-            background: #e2e8f0;
-            border-radius: 60px;
-            height: 12px;
-            overflow: hidden;
-            margin-bottom: 12px;
-        }
-
-        .progress-bar-fill {
-            background: #1e6f5c;
-            width: 0%;
-            height: 100%;
-            border-radius: 60px;
-            transition: width 0.3s;
-        }
-
-        .progress-percent {
-            text-align: center;
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #1e6f5c;
-            margin-bottom: 15px;
-        }
-
-        .levels-buttons {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-
-        .level-btn {
-            background: #f1f5f9;
-            border: none;
-            border-radius: 60px;
-            padding: 10px 0;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #1e2a3a;
-        }
-
-        .level-btn.active-25 { background: #fbbf24; color: #1e2a3a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background: #eef2f7; min-height: 100vh; }
+        .auth-container { min-height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, #0b2b40, #1a4a5f); padding: 20px; }
+        .auth-card { background: white; border-radius: 48px; padding: 48px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.2); }
+        .auth-card h1 { font-size: 2rem; color: #0b2b40; margin-bottom: 8px; }
+        .auth-card .sub { color: #4a6a85; margin-bottom: 30px; }
+        .google-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; background: white; color: #3c4043; border: 1px solid #dadce0; border-radius: 60px; padding: 14px 20px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .google-btn:hover { background: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .google-btn img { width: 24px; height: 24px; }
+        .dashboard { max-width: 1400px; margin: auto; padding: 30px 20px; display: none; }
+        .header { background: linear-gradient(135deg, #0b2b40, #123e52); color: white; padding: 28px 32px; border-radius: 40px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .header h1 { font-size: 1.8rem; }
+        .user-info { display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.15); padding: 8px 20px; border-radius: 60px; }
+        .logout-btn { background: #b53b3b; border: none; border-radius: 40px; padding: 8px 18px; color: white; cursor: pointer; font-weight: bold; }
+        .admin-bar { background: white; border-radius: 60px; padding: 16px 24px; margin-bottom: 30px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+        .add-subject-group { display: flex; gap: 10px; flex: 2; min-width: 250px; }
+        .add-subject-group input { flex: 1; padding: 12px 18px; border-radius: 60px; border: 1px solid #ccd7e4; }
+        .btn-primary { background: #1e6f5c; color: white; border: none; border-radius: 60px; padding: 12px 24px; font-weight: bold; cursor: pointer; }
+        .btn-danger { background: #b53b3b; color: white; border: none; border-radius: 60px; padding: 12px 24px; font-weight: bold; cursor: pointer; }
+        .stats-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 35px; }
+        .stat-card { background: white; border-radius: 30px; padding: 16px 28px; flex: 1; min-width: 150px; text-align: center; font-weight: bold; }
+        .stat-card span { display: block; font-size: 2rem; font-weight: 800; color: #1e6f5c; }
+        .subjects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; margin-bottom: 40px; }
+        .subject-card { background: white; border-radius: 32px; padding: 22px 20px; box-shadow: 0 8px 18px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .subject-card:hover { transform: translateY(-5px); }
+        .subject-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .subject-title-wrapper { display: flex; align-items: center; gap: 8px; flex: 1; }
+        .subject-title { font-size: 1.2rem; font-weight: 700; background: none; border: none; padding: 5px 10px; border-radius: 20px; cursor: pointer; }
+        .subject-title:hover { background: #e2e8f0; }
+        .delete-subject-btn { background: #e2e8f0; border: none; border-radius: 40px; padding: 6px 14px; cursor: pointer; color: #b53b3b; font-weight: bold; }
+        .progress-bar-bg { background: #e2e8f0; border-radius: 60px; height: 12px; overflow: hidden; margin-bottom: 12px; }
+        .progress-bar-fill { background: #1e6f5c; width: 0%; height: 100%; transition: width 0.3s; }
+        .progress-percent { text-align: center; font-size: 1.8rem; font-weight: 800; color: #1e6f5c; margin-bottom: 15px; }
+        .levels-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+        .level-btn { background: #f1f5f9; border: none; border-radius: 60px; padding: 10px 0; font-weight: 600; cursor: pointer; }
+        .level-btn.active-25 { background: #fbbf24; }
         .level-btn.active-50 { background: #f59e0b; color: white; }
         .level-btn.active-75 { background: #10b981; color: white; }
         .level-btn.active-100 { background: #1e6f5c; color: white; }
-
-        .level-btn:hover {
-            transform: scale(1.02);
-        }
-
-        .todo-section {
-            background: white;
-            border-radius: 32px;
-            padding: 24px 28px;
-            margin-top: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-
-        .todo-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 18px;
-        }
-
-        .todo-input-group {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-        }
-
-        .todo-input {
-            flex: 1;
-            padding: 14px 18px;
-            border-radius: 60px;
-            border: 1px solid #ccd7e4;
-            font-size: 1rem;
-        }
-
-        .todo-list {
-            list-style: none;
-        }
-
-        .todo-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f4f9fe;
-            margin: 10px 0;
-            padding: 12px 20px;
-            border-radius: 60px;
-        }
-
-        .todo-text {
-            font-size: 1rem;
-        }
-
-        .todo-actions button {
-            background: none;
-            border: none;
-            font-size: 0.9rem;
-            margin-left: 12px;
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 40px;
-        }
-
-        .todo-toggle {
-            background: #1e6f5c;
-            color: white;
-        }
-
-        .todo-delete {
-            background: #b53b3b;
-            color: white;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 35px;
-            color: #4f6f8a;
-            font-size: 0.8rem;
-        }
-
-        @media (max-width: 700px) {
-            .admin-bar { flex-direction: column; }
-            .add-subject-group { width: 100%; }
-        }
+        .resource-section { margin-top: 15px; padding-top: 12px; border-top: 1px dashed #cbd5e1; }
+        .resource-label { font-size: 0.8rem; color: #4a6a85; margin-bottom: 6px; display: block; }
+        .resource-input-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+        .resource-input { flex: 1; padding: 8px 12px; border-radius: 60px; border: 1px solid #cbd5e1; font-size: 0.8rem; }
+        .add-resource-btn { background: #1e4a76; border: none; border-radius: 60px; padding: 8px 14px; cursor: pointer; font-size: 0.7rem; color: white; }
+        .resources-list { list-style: none; margin-top: 8px; }
+        .resource-item { background: #eef2ff; border-radius: 40px; padding: 5px 12px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; }
+        .resource-link { color: #1e4a76; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; }
+        .resource-link:hover { text-decoration: underline; }
+        .delete-resource { background: none; border: none; color: #942222; cursor: pointer; font-size: 1rem; }
+        .todo-section { background: white; border-radius: 32px; padding: 24px 28px; margin-top: 20px; }
+        .todo-input-group { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+        .todo-input { flex: 1; padding: 12px 18px; border-radius: 60px; border: 1px solid #ccd7e4; }
+        .todo-list { list-style: none; }
+        .todo-item { display: flex; justify-content: space-between; align-items: center; background: #f4f9fe; margin: 10px 0; padding: 12px 20px; border-radius: 60px; }
+        footer { text-align: center; margin-top: 35px; color: #4f6f8a; font-size: 0.8rem; }
+        @media (max-width: 700px) { .admin-bar { flex-direction: column; } .header { flex-direction: column; text-align: center; } }
     </style>
 </head>
 <body>
-<div class="dashboard">
+
+<div id="authPage" class="auth-container">
+    <div class="auth-card">
+        <h1>📚 SmartBoard</h1>
+        <div class="sub">Connectez-vous avec votre compte Google</div>
+        <button onclick="signInWithGoogle()" class="google-btn">
+            <img src="https://www.google.com/favicon.ico" alt="Google"> Se connecter avec Gmail
+        </button>
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 0.8rem; color: #4a6a85;">
+            🔐 Vos données sont sauvegardées dans le cloud<br>📱 Accessible depuis n'importe quel appareil
+        </div>
+    </div>
+</div>
+
+<div id="dashboard" class="dashboard">
     <div class="header">
         <h1>📚 SmartBoard - Tableau de révision</h1>
-        <p>Ajoute, modifie ou supprime des matières librement | 4 niveaux de progression</p>
+        <div class="user-info">
+            <span>👤 <span id="currentUserName"></span></span>
+            <span style="font-size:0.8rem; opacity:0.8;" id="currentUserEmail"></span>
+            <button onclick="logoutUser()" class="logout-btn">🚪 Déconnexion</button>
+        </div>
     </div>
-
     <div class="admin-bar">
         <div class="add-subject-group">
             <input type="text" id="newSubjectName" placeholder="Nouvelle matière (ex: Biologie, Algorithmique...)">
-            <button id="addSubjectBtn" class="btn-primary">➕ Ajouter une matière</button>
+            <button id="addSubjectBtn" class="btn-primary">➕ Ajouter</button>
         </div>
-        <button id="resetAllDataBtn" class="btn-danger">⚠️ Réinitialiser tout</button>
+        <button id="resetAllDataBtn" class="btn-danger">⚠️ Tout réinitialiser</button>
     </div>
-
     <div class="stats-row" id="statsContainer"></div>
-
     <div class="subjects-grid" id="subjectsGrid"></div>
-
     <div class="todo-section">
-        <div class="todo-title">📋 Missions de révision (quotidiennes)</div>
+        <div style="font-size:1.3rem; font-weight:600;">📋 Missions de révision</div>
         <div class="todo-input-group">
-            <input type="text" id="taskInput" class="todo-input" placeholder="ex: Réviser les interférences en optique">
+            <input type="text" id="taskInput" placeholder="ex: Réviser les interférences">
             <button id="addTaskBtn" class="btn-primary">➕ Ajouter</button>
         </div>
         <ul class="todo-list" id="todoList"></ul>
     </div>
-    <footer>✏️ Clique sur le nom d'une matière pour la modifier | 🗑️ Supprimer une matière | ➕ Ajouter des matières</footer>
+    <footer>✏️ Clique sur le nom pour modifier | 📎 Ajoute des liens (cours, vidéos, PDF) par matière</footer>
 </div>
 
 <script>
-    // Charger ou initialiser les matières
-    let subjectsList = JSON.parse(localStorage.getItem("dynamicSubjectsList")) || [
-        "🔆 Optique ondulatoire",
-        "⚛️ Chimie quantique",
-        "🧪 Chimie de l'état solide",
-        "🌀 Physique atomique et moléculaire",
-        "🌌 Mécanique quantique",
-        "🔥 Thermodynamique"
-    ];
-    
-    let progress = JSON.parse(localStorage.getItem("dynamicSubjectsProgress")) || {};
-    let tasks = JSON.parse(localStorage.getItem("dynamicRevisionTasks")) || [];
-    
-    // Niveaux disponibles
     const levels = [25, 50, 75, 100];
     
-    // État d'édition (pour chaque matière)
-    let editingMode = {};
-    
-    function saveAll() {
-        localStorage.setItem("dynamicSubjectsList", JSON.stringify(subjectsList));
-        localStorage.setItem("dynamicSubjectsProgress", JSON.stringify(progress));
-        localStorage.setItem("dynamicRevisionTasks", JSON.stringify(tasks));
-    }
-    
-    // Initialiser les progrès pour les nouvelles matières
-    function syncProgress() {
-        subjectsList.forEach(sub => {
-            if (progress[sub] === undefined) {
-                progress[sub] = 0;
-            }
-        });
-        // Nettoyer les anciennes matières qui n'existent plus
-        Object.keys(progress).forEach(key => {
-            if (!subjectsList.includes(key)) {
-                delete progress[key];
-            }
-        });
-    }
-    
-    function getGlobalStats() {
-        let totalPercent = 0;
-        subjectsList.forEach(sub => {
-            totalPercent += progress[sub] || 0;
-        });
-        const avgPercent = subjectsList.length === 0 ? 0 : Math.round(totalPercent / subjectsList.length);
-        const completedCount = subjectsList.filter(sub => (progress[sub] || 0) === 100).length;
-        return { avgPercent, completedCount };
-    }
-    
-    function updateStats() {
-        const stats = getGlobalStats();
-        const tasksDone = tasks.filter(t => t.done).length;
-        const statsHtml = `
-            <div class="stat-card">📊 Progression moyenne <span>${stats.avgPercent}%</span></div>
-            <div class="stat-card">🏆 Matières à 100% <span>${stats.completedCount}/${subjectsList.length}</span></div>
-            <div class="stat-card">✅ Tâches faites <span>${tasksDone}/${tasks.length}</span></div>
-            <div class="stat-card">📚 Total matières <span>${subjectsList.length}</span></div>
-        `;
-        document.getElementById("statsContainer").innerHTML = statsHtml;
-    }
-    
-    function resetSingleSubject(subject) {
-        if (confirm(`Voulez-vous remettre "${subject}" à 0% ?`)) {
-            progress[subject] = 0;
-            saveAll();
-            renderSubjects();
-            updateStats();
-        }
-    }
-    
-    function deleteSubject(subject) {
-        if (confirm(`Supprimer définitivement "${subject}" ? Toute progression sera perdue.`)) {
-            const index = subjectsList.indexOf(subject);
-            if (index !== -1) {
-                subjectsList.splice(index, 1);
-                delete progress[subject];
-                saveAll();
-                syncProgress();
-                renderSubjects();
-                updateStats();
-                renderTodoList();
-            }
-        }
-    }
-    
-    function updateSubjectName(oldName, newName) {
-        if (newName.trim() === "") return false;
-        if (newName === oldName) return false;
-        if (subjectsList.includes(newName)) {
-            alert("Ce nom existe déjà !");
-            return false;
-        }
-        const index = subjectsList.indexOf(oldName);
-        if (index !== -1) {
-            subjectsList[index] = newName;
-            progress[newName] = progress[oldName];
-            delete progress[oldName];
-            saveAll();
-            return true;
-        }
-        return false;
-    }
-    
-    function startEditing(subject, element) {
-        const currentName = subject;
-        const input = document.createElement("input");
-        input.type = "text";
-        input.value = currentName;
-        input.className = "subject-title-input";
-        input.style.fontSize = "1.2rem";
-        input.style.fontWeight = "700";
-        
-        const doneEdit = () => {
-            const newName = input.value.trim();
-            if (newName !== "" && newName !== currentName) {
-                if (updateSubjectName(currentName, newName)) {
-                    renderSubjects();
-                } else if (newName !== currentName && newName !== "") {
-                    alert("Impossible de renommer (nom existant ou vide)");
-                    renderSubjects();
-                } else {
-                    renderSubjects();
-                }
-            } else {
-                renderSubjects();
-            }
-        };
-        
-        input.addEventListener("blur", doneEdit);
-        input.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") {
-                doneEdit();
-            }
-        });
-        
-        element.innerHTML = "";
-        element.appendChild(input);
-        input.focus();
-    }
-    
-    function renderSubjects() {
-        const grid = document.getElementById("subjectsGrid");
-        grid.innerHTML = "";
-        
-        subjectsList.forEach(subject => {
-            const currentProgress = progress[subject] || 0;
-            const card = document.createElement("div");
-            card.className = "subject-card";
-            
-            let levelsHtml = "";
-            levels.forEach(level => {
-                let activeClass = "";
-                if (currentProgress === level) {
-                    if (level === 25) activeClass = "active-25";
-                    else if (level === 50) activeClass = "active-50";
-                    else if (level === 75) activeClass = "active-75";
-                    else if (level === 100) activeClass = "active-100";
-                }
-                levelsHtml += `<button class="level-btn ${activeClass}" data-subject="${subject}" data-level="${level}">${level}%</button>`;
-            });
-            
-            card.innerHTML = `
-                <div class="subject-header">
-                    <div class="subject-title-wrapper">
-                        <span class="subject-title" data-subject="${subject}">${escapeHtml(subject)}</span>
-                        <button class="edit-icon" data-subject="${subject}" title="Modifier le nom">✏️</button>
-                    </div>
-                    <button class="delete-subject-btn" data-subject-delete="${subject}">🗑️ Supprimer</button>
-                </div>
-                <div class="progress-container">
-                    <div class="progress-percent">${currentProgress}%</div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" style="width: ${currentProgress}%;"></div>
-                    </div>
-                </div>
-                <div class="levels-buttons">
-                    ${levelsHtml}
-                </div>
-                <div style="margin-top: 15px; text-align: left;">
-                    <button class="reset-subject-btn" data-subject-reset="${subject}" style="background:#e2e8f0; border:none; border-radius:40px; padding:6px 14px; cursor:pointer; color:#b53b3b;">🔄 Remettre à 0</button>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-        
-        // Niveaux de progression
-        document.querySelectorAll(".level-btn").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const subject = btn.getAttribute("data-subject");
-                const level = parseInt(btn.getAttribute("data-level"));
-                if (subject && !isNaN(level)) {
-                    progress[subject] = level;
-                    saveAll();
-                    renderSubjects();
-                    updateStats();
-                }
-            });
-        });
-        
-        // Reset individuel
-        document.querySelectorAll(".reset-subject-btn").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const subject = btn.getAttribute("data-subject-reset");
-                if (subject) resetSingleSubject(subject);
-            });
-        });
-        
-        // Supprimer matière
-        document.querySelectorAll(".delete-subject-btn").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const subject = btn.getAttribute("data-subject-delete");
-                if (subject) deleteSubject(subject);
-            });
-        });
-        
-        // Édition du nom (clique sur le titre ou le crayon)
-        document.querySelectorAll(".subject-title").forEach(el => {
-            el.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const subject = el.getAttribute("data-subject");
-                startEditing(subject, el);
-            });
-        });
-        
-        document.querySelectorAll(".edit-icon").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const subject = btn.getAttribute("data-subject");
-                const titleSpan = btn.parentElement.querySelector(".subject-title");
-                if (titleSpan) startEditing(subject, titleSpan);
-            });
-        });
-    }
-    
-    function renderTodoList() {
-        const todoContainer = document.getElementById("todoList");
-        if (!todoContainer) return;
-        
-        if (tasks.length === 0) {
-            todoContainer.innerHTML = "<li style='padding:12px; text-align:center; color:#6c8a9e;'>✨ Aucune tâche. Ajoute une révision quotidienne</li>";
-            return;
-        }
-        
-        let html = "";
-        tasks.forEach((task, idx) => {
-            const styleDone = task.done ? "style='text-decoration:line-through; opacity:0.6;'" : "";
-            html += `
-                <li class="todo-item" ${styleDone}>
-                    <span class="todo-text">${escapeHtml(task.text)}</span>
-                    <div class="todo-actions">
-                        <button class="todo-toggle" data-idx="${idx}">${task.done ? "↩️ Défaire" : "✅ Fait"}</button>
-                        <button class="todo-delete" data-idx="${idx}">🗑️</button>
-                    </div>
-                </li>
-            `;
-        });
-        todoContainer.innerHTML = html;
-        
-        document.querySelectorAll(".todo-toggle").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const idx = parseInt(btn.getAttribute("data-idx"));
-                if (!isNaN(idx) && tasks[idx]) {
-                    tasks[idx].done = !tasks[idx].done;
-                    saveAll();
-                    renderTodoList();
-                    updateStats();
-                }
-            });
-        });
-        
-        document.querySelectorAll(".todo-delete").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const idx = parseInt(btn.getAttribute("data-idx"));
-                if (!isNaN(idx) && tasks[idx]) {
-                    tasks.splice(idx, 1);
-                    saveAll();
-                    renderTodoList();
-                    updateStats();
-                }
-            });
-        });
-    }
-    
     function escapeHtml(str) {
+        if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
             if (m === '&') return '&amp;';
             if (m === '<') return '&lt;';
@@ -687,68 +232,317 @@
         });
     }
     
-    function addTask() {
-        const input = document.getElementById("taskInput");
-        const text = input.value.trim();
-        if (text === "") return;
-        tasks.push({ text: text, done: false });
-        saveAll();
-        renderTodoList();
-        updateStats();
-        input.value = "";
-    }
-    
-    function addNewSubject() {
-        const input = document.getElementById("newSubjectName");
-        let newName = input.value.trim();
-        if (newName === "") {
-            alert("Veuillez entrer un nom de matière");
-            return;
-        }
-        if (subjectsList.includes(newName)) {
-            alert("Cette matière existe déjà !");
-            return;
-        }
-        subjectsList.push(newName);
-        progress[newName] = 0;
-        saveAll();
-        syncProgress();
-        renderSubjects();
-        updateStats();
-        input.value = "";
-    }
-    
-    function resetEverything() {
-        if (confirm("⚠️ ATTENTION : Cela supprimera TOUTES les matières, TOUTE progression et TOUTES les tâches. Êtes-vous sûr ?")) {
-            subjectsList = [];
-            progress = {};
-            tasks = [];
-            saveAll();
-            syncProgress();
-            renderSubjects();
-            renderTodoList();
-            updateStats();
-        }
-    }
-    
-    function init() {
-        syncProgress();
-        renderSubjects();
-        updateStats();
-        renderTodoList();
+    window.renderSubjects = function() {
+        const grid = document.getElementById("subjectsGrid");
+        if (!grid) return;
+        const subjects = window.getUserSubjects();
+        const progress = window.getUserProgress();
+        const resources = window.getUserResources() || {};
         
-        document.getElementById("addTaskBtn").addEventListener("click", addTask);
-        document.getElementById("taskInput").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") addTask();
+        if (!subjects || subjects.length === 0) {
+            grid.innerHTML = "<div style='text-align:center; padding:40px; background:white; border-radius:32px;'>✨ Aucune matière. Ajoutez-en une ci-dessus !</div>";
+            return;
+        }
+        grid.innerHTML = "";
+        
+        subjects.forEach(subject => {
+            const current = progress[subject] || 0;
+            const subjectResources = resources[subject] || [];
+            const card = document.createElement("div");
+            card.className = "subject-card";
+            
+            let levelsHtml = "";
+            levels.forEach(level => {
+                let activeClass = "";
+                if (current === level) {
+                    if (level === 25) activeClass = "active-25";
+                    else if (level === 50) activeClass = "active-50";
+                    else if (level === 75) activeClass = "active-75";
+                    else if (level === 100) activeClass = "active-100";
+                }
+                levelsHtml += `<button class="level-btn ${activeClass}" data-subject="${escapeHtml(subject)}" data-level="${level}">${level}%</button>`;
+            });
+            
+            let resourcesHtml = `<div class="resource-section">
+                <div class="resource-label">📎 Liens utiles (cours, vidéo, PDF) :</div>
+                <div class="resource-input-group">
+                    <input type="text" class="resource-input" id="res-input-${subject.replace(/\s/g, '')}" placeholder="https://... ou titre">
+                    <button class="add-resource-btn" data-subject="${escapeHtml(subject)}">➕ Ajouter</button>
+                </div>`;
+            if (subjectResources.length) {
+                resourcesHtml += `<ul class="resources-list">`;
+                subjectResources.forEach((res, idx) => {
+                    let display = res.length > 50 ? res.substring(0, 50)+"..." : res;
+                    resourcesHtml += `<li class="resource-item">
+                        <a href="${escapeHtml(res)}" target="_blank" class="resource-link" title="${escapeHtml(res)}">📖 ${escapeHtml(display)}</a>
+                        <button class="delete-resource" data-subject="${escapeHtml(subject)}" data-resource-idx="${idx}">✖</button>
+                    </li>`;
+                });
+                resourcesHtml += `</ul>`;
+            }
+            resourcesHtml += `</div>`;
+            
+            card.innerHTML = `
+                <div class="subject-header">
+                    <div class="subject-title-wrapper">
+                        <span class="subject-title" data-subject="${escapeHtml(subject)}">${escapeHtml(subject)}</span>
+                        <button class="edit-icon" data-subject="${escapeHtml(subject)}" style="background:none; border:none; cursor:pointer;">✏️</button>
+                    </div>
+                    <button class="delete-subject-btn" data-subject-delete="${escapeHtml(subject)}">🗑️ Supprimer</button>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-percent">${current}%</div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${current}%;"></div></div>
+                </div>
+                <div class="levels-buttons">${levelsHtml}</div>
+                <div style="margin:10px 0;"><button class="reset-subject-btn" data-subject-reset="${escapeHtml(subject)}" style="background:#e2e8f0; border:none; border-radius:40px; padding:6px 14px; cursor:pointer; color:#b53b3b;">🔄 Remettre à 0</button></div>
+                ${resourcesHtml}
+            `;
+            grid.appendChild(card);
         });
-        document.getElementById("addSubjectBtn").addEventListener("click", addNewSubject);
-        document.getElementById("resetAllDataBtn").addEventListener("click", resetEverything);
-        document.getElementById("newSubjectName").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") addNewSubject();
+        
+        // Gestion des niveaux
+        document.querySelectorAll(".level-btn").forEach(btn => {
+            btn.onclick = () => {
+                const subject = btn.getAttribute("data-subject");
+                const level = parseInt(btn.getAttribute("data-level"));
+                const prog = window.getUserProgress();
+                prog[subject] = level;
+                window.setUserProgress(prog);
+                window.renderSubjects();
+                window.updateStats();
+            };
         });
+        
+        // Reset individuel
+        document.querySelectorAll(".reset-subject-btn").forEach(btn => {
+            btn.onclick = () => {
+                const subject = btn.getAttribute("data-subject-reset");
+                if (confirm(`Remettre "${subject}" à 0% ?`)) {
+                    const prog = window.getUserProgress();
+                    prog[subject] = 0;
+                    window.setUserProgress(prog);
+                    window.renderSubjects();
+                    window.updateStats();
+                }
+            };
+        });
+        
+        // Supprimer matière
+        document.querySelectorAll(".delete-subject-btn").forEach(btn => {
+            btn.onclick = () => {
+                const subject = btn.getAttribute("data-subject-delete");
+                if (confirm(`Supprimer "${subject}" ?`)) {
+                    let subs = window.getUserSubjects();
+                    subs = subs.filter(s => s !== subject);
+                    window.setUserSubjects(subs);
+                    const prog = window.getUserProgress();
+                    delete prog[subject];
+                    window.setUserProgress(prog);
+                    const res = window.getUserResources();
+                    delete res[subject];
+                    window.setUserResources(res);
+                    window.renderSubjects();
+                    window.updateStats();
+                }
+            };
+        });
+        
+        // Édition du nom
+        document.querySelectorAll(".subject-title").forEach(el => {
+            el.onclick = () => startEditing(el.getAttribute("data-subject"), el);
+        });
+        document.querySelectorAll(".edit-icon").forEach(btn => {
+            btn.onclick = () => {
+                const subject = btn.getAttribute("data-subject");
+                const titleSpan = btn.parentElement.querySelector(".subject-title");
+                if (titleSpan) startEditing(subject, titleSpan);
+            };
+        });
+        
+        // Ajout de ressource
+        document.querySelectorAll(".add-resource-btn").forEach(btn => {
+            btn.onclick = () => {
+                const subject = btn.getAttribute("data-subject");
+                const inputId = `res-input-${subject.replace(/\s/g, '')}`;
+                const input = document.getElementById(inputId);
+                if (input && input.value.trim()) {
+                    let url = input.value.trim();
+                    if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://" + url;
+                    let ress = window.getUserResources();
+                    if (!ress[subject]) ress[subject] = [];
+                    ress[subject].push(url);
+                    window.setUserResources(ress);
+                    window.renderSubjects();
+                    input.value = "";
+                }
+            };
+        });
+        
+        // Suppression de ressource
+        document.querySelectorAll(".delete-resource").forEach(btn => {
+            btn.onclick = () => {
+                const subject = btn.getAttribute("data-subject");
+                const idx = parseInt(btn.getAttribute("data-resource-idx"));
+                let ress = window.getUserResources();
+                if (ress[subject] && !isNaN(idx)) {
+                    ress[subject].splice(idx, 1);
+                    window.setUserResources(ress);
+                    window.renderSubjects();
+                }
+            };
+        });
+    };
+    
+    function startEditing(subject, element) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = subject;
+        input.style.padding = "5px 10px";
+        input.style.borderRadius = "20px";
+        input.style.border = "2px solid #1e6f5c";
+        input.style.fontSize = "1.1rem";
+        input.style.fontWeight = "bold";
+        const done = () => {
+            const newName = input.value.trim();
+            if (newName && newName !== subject) {
+                let subs = window.getUserSubjects();
+                if (!subs.includes(newName)) {
+                    const idx = subs.indexOf(subject);
+                    if (idx !== -1) {
+                        subs[idx] = newName;
+                        window.setUserSubjects(subs);
+                        const prog = window.getUserProgress();
+                        prog[newName] = prog[subject];
+                        delete prog[subject];
+                        window.setUserProgress(prog);
+                        const ress = window.getUserResources();
+                        ress[newName] = ress[subject];
+                        delete ress[subject];
+                        window.setUserResources(ress);
+                    }
+                }
+            }
+            window.renderSubjects();
+            window.updateStats();
+        };
+        input.onblur = done;
+        input.onkeypress = (e) => { if (e.key === "Enter") done(); };
+        element.innerHTML = "";
+        element.appendChild(input);
+        input.focus();
     }
     
-    init();
+    window.updateStats = function() {
+        const subjects = window.getUserSubjects();
+        const progress = window.getUserProgress();
+        let total = 0;
+        subjects.forEach(s => total += progress[s] || 0);
+        const avg = subjects.length ? Math.round(total / subjects.length) : 0;
+        const completed = subjects.filter(s => (progress[s] || 0) === 100).length;
+        const tasks = window.getUserTasks();
+        const tasksDone = tasks.filter(t => t.done).length;
+        document.getElementById("statsContainer").innerHTML = `
+            <div class="stat-card">📊 Progression moyenne <span>${avg}%</span></div>
+            <div class="stat-card">🏆 Matières à 100% <span>${completed}/${subjects.length}</span></div>
+            <div class="stat-card">✅ Tâches faites <span>${tasksDone}/${tasks.length}</span></div>
+            <div class="stat-card">📚 Total matières <span>${subjects.length}</span></div>
+        `;
+    };
+    
+    window.renderTodoList = function() {
+        const container = document.getElementById("todoList");
+        if (!container) return;
+        const tasks = window.getUserTasks();
+        if (!tasks.length) {
+            container.innerHTML = "<li style='padding:12px; text-align:center; color:#6c8a9e;'>✨ Aucune tâche. Ajoutez-en une ci-dessus</li>";
+            return;
+        }
+        let html = "";
+        tasks.forEach((task, idx) => {
+            const style = task.done ? "style='text-decoration:line-through; opacity:0.6;'" : "";
+            html += `<li class="todo-item" ${style}>
+                <span>${escapeHtml(task.text)}</span>
+                <div>
+                    <button class="todo-toggle" data-idx="${idx}" style="background:#1e6f5c; color:white; border:none; border-radius:40px; padding:6px 12px; margin-right:8px; cursor:pointer;">${task.done ? "↩️" : "✅"}</button>
+                    <button class="todo-delete" data-idx="${idx}" style="background:#b53b3b; color:white; border:none; border-radius:40px; padding:6px 12px; cursor:pointer;">🗑️</button>
+                </div>
+            </li>`;
+        });
+        container.innerHTML = html;
+        document.querySelectorAll(".todo-toggle").forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.idx);
+                let tks = window.getUserTasks();
+                if (tks[idx]) {
+                    tks[idx].done = !tks[idx].done;
+                    window.setUserTasks(tks);
+                    window.renderTodoList();
+                    window.updateStats();
+                }
+            };
+        });
+        document.querySelectorAll(".todo-delete").forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.idx);
+                let tks = window.getUserTasks();
+                tks.splice(idx, 1);
+                window.setUserTasks(tks);
+                window.renderTodoList();
+                window.updateStats();
+            };
+        });
+    };
+    
+    // Événements du dashboard
+    setTimeout(() => {
+        const addTaskBtn = document.getElementById("addTaskBtn");
+        const addSubjectBtn = document.getElementById("addSubjectBtn");
+        const resetAllBtn = document.getElementById("resetAllDataBtn");
+        const taskInput = document.getElementById("taskInput");
+        const newSubjectInput = document.getElementById("newSubjectName");
+        
+        if (addTaskBtn) addTaskBtn.onclick = () => {
+            const text = taskInput?.value.trim();
+            if (text) {
+                let tks = window.getUserTasks();
+                tks.push({ text, done: false });
+                window.setUserTasks(tks);
+                window.renderTodoList();
+                window.updateStats();
+                if (taskInput) taskInput.value = "";
+            }
+        };
+        if (addSubjectBtn) addSubjectBtn.onclick = () => {
+            let newName = newSubjectInput?.value.trim();
+            if (newName) {
+                let subs = window.getUserSubjects();
+                if (!subs.includes(newName)) {
+                    subs.push(newName);
+                    window.setUserSubjects(subs);
+                    const prog = window.getUserProgress();
+                    prog[newName] = 0;
+                    window.setUserProgress(prog);
+                    window.renderSubjects();
+                    window.updateStats();
+                    if (newSubjectInput) newSubjectInput.value = "";
+                } else alert("Cette matière existe déjà");
+            }
+        };
+        if (resetAllBtn) resetAllBtn.onclick = () => {
+            if (confirm("⚠️ Supprimer TOUTES les matières, ressources et tâches ?")) {
+                window.setUserSubjects([]);
+                window.setUserProgress({});
+                window.setUserResources({});
+                window.setUserTasks([]);
+                window.renderSubjects();
+                window.renderTodoList();
+                window.updateStats();
+            }
+        };
+        if (taskInput) taskInput.onkeypress = (e) => { if (e.key === "Enter") addTaskBtn?.click(); };
+        if (newSubjectInput) newSubjectInput.onkeypress = (e) => { if (e.key === "Enter") addSubjectBtn?.click(); };
+    }, 200);
 </script>
 </body>
 </html>
